@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from aiogram import Bot, Dispatcher
 from aiogram.types import Update
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     logger.info("Starting TEOS...")
     if settings.USE_WEBHOOK:
         await bot_instance.set_webhook(
@@ -34,7 +32,6 @@ async def lifespan(app: FastAPI):
     if settings.AUTO_UPDATE_ENABLED:
         AutoUpdateService().check_updates()
     yield
-    # Shutdown
     logger.info("Shutting down TEOS...")
     if settings.USE_WEBHOOK:
         await bot_instance.delete_webhook()
@@ -45,12 +42,7 @@ async def start_polling():
     dp = create_dispatcher()
     await dp.start_polling(bot_instance, skip_updates=True)
 
-app = FastAPI(
-    title="TEOS API",
-    description="Enterprise Operating System for Telegram",
-    version="1.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="TEOS API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.API_CORS_ORIGINS,
@@ -62,10 +54,10 @@ app.mount("/api", api_app)
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": "1.0.0"}
+    return {"status": "ok"}
 
 @app.post(settings.BOT_WEBHOOK_PATH)
-async def bot_webhook(request: Request) -> dict:
+async def bot_webhook(request: Request):
     if not settings.USE_WEBHOOK:
         return {"status": "disabled"}
     update = Update.model_validate(await request.json(), context={"bot": bot_instance})
@@ -75,5 +67,4 @@ async def bot_webhook(request: Request) -> dict:
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(settings.API_PORT)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=settings.API_PORT)
