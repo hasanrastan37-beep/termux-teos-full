@@ -37,7 +37,7 @@ class Settings:
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "30"))
     RATE_LIMIT_PER_USER: str = os.getenv("RATE_LIMIT_PER_USER", "100/minute")
-    ADMIN_IDS: List[int] = []
+    ADMIN_IDS: List[int] = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
     
     # AI
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
