@@ -1,70 +1,55 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from aiogram.types import Update
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiogram.types import Update
 
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import engine, Base
 from app.core.logging_setup import setup_logging
-from app.bot.dispatcher import create_dispatcher, bot as bot_instance
-from app.api.main import app as api_app
-from app.workers.scheduler import start_scheduler
-from app.services.backup_service import BackupService
-from app.services.auto_update_service import AutoUpdateService
 
 setup_logging()
 logger = logging.getLogger(__name__)
 
+bot = Bot(token=settings.BOT_TOKEN)
+dp = Dispatcher()
+
+@dp.message(Command("start"))
+async def start_cmd(message: types.Message):
+    await message.answer("✅ ربات TEOS با موفقیت راه‌اندازی شد!")
+
+@dp.message(Command("help"))
+async def help_cmd(message: types.Message):
+    await message.answer("دستورات: /start - راه‌اندازی")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting TEOS...")
-    if settings.USE_WEBHOOK:
-        await bot_instance.set_webhook(
-            url=f"{settings.BOT_WEBHOOK_URL}{settings.BOT_WEBHOOK_PATH}",
-            allowed_updates=Update.get_all_updates_types()
-        )
-    else:
-        asyncio.create_task(start_polling())
-    start_scheduler()
-    BackupService().schedule_backup()
-    if settings.AUTO_UPDATE_ENABLED:
-        AutoUpdateService().check_updates()
+    # ایجاد جداول دیتابیس (در صورت نبود)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables ready")
+    
+    # شروع polling (برای سادگی، webhook را فعلاً غیرفعال نگه دارید)
+    asyncio.create_task(dp.start_polling(bot))
+    logger.info("Bot started")
     yield
-    logger.info("Shutting down TEOS...")
-    if settings.USE_WEBHOOK:
-        await bot_instance.delete_webhook()
-    await bot_instance.session.close()
+    await bot.session.close()
     await engine.dispose()
 
-async def start_polling():
-    dp = create_dispatcher()
-    await dp.start_polling(bot_instance, skip_updates=True)
-
-app = FastAPI(title="TEOS API", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.API_CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.mount("/api", api_app)
+app = FastAPI(lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/health")
-async def health_check():
+async def health():
     return {"status": "ok"}
 
 @app.post(settings.BOT_WEBHOOK_PATH)
-async def bot_webhook(request: Request):
+async def webhook(request: Request):
     if not settings.USE_WEBHOOK:
-        return {"status": "disabled"}
-    update = Update.model_validate(await request.json(), context={"bot": bot_instance})
-    dp = create_dispatcher()
-    await dp.feed_update(bot_instance, update)
+        return {"status": "webhook disabled"}
+    update = Update.model_validate(await request.json(), context={"bot": bot})
+    await dp.feed_update(bot, update)
     return {"status": "ok"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=settings.API_PORT)
