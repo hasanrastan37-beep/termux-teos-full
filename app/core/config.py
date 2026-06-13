@@ -13,11 +13,11 @@ class Settings:
     
     # Database
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./teos.db")
-    DATABASE_POOL_SIZE: int = int(os.getenv("DATABASE_POOL_SIZE", "20"))
-    DATABASE_MAX_OVERFLOW: int = int(os.getenv("DATABASE_MAX_OVERFLOW", "40"))
+    DATABASE_POOL_SIZE: int = int(os.getenv("DATABASE_POOL_SIZE", "5"))  # کمتر برای SQLite
+    DATABASE_MAX_OVERFLOW: int = int(os.getenv("DATABASE_MAX_OVERFLOW", "10"))
     
-    # Redis
-    REDIS_URL: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    # Redis (برای Railway اگر Redis اضافه کنید)
+    REDIS_URL: str = os.getenv("REDIS_URL", "")
     REDIS_PASSWORD: Optional[str] = os.getenv("REDIS_PASSWORD")
     
     # Telegram
@@ -39,25 +39,42 @@ class Settings:
     RATE_LIMIT_PER_USER: str = os.getenv("RATE_LIMIT_PER_USER", "100/minute")
     ADMIN_IDS: List[int] = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x]
     
-    # AI (غیرفعال برای Railway)
-    AI_ENABLED: bool = os.getenv("AI_ENABLED", "false").lower() == "true"
-    OPENAI_API_KEY: Optional[str] = None
+    # AI (غیرفعال در ابتدا برای کاهش مصرف حافظه)
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4-turbo")
+    AI_CONFIDENCE_THRESHOLD: float = float(os.getenv("AI_CONFIDENCE_THRESHOLD", "0.7"))
+    AI_ENABLED: bool = os.getenv("AI_ENABLED", "false").lower() == "true"  # پیش‌فرض false
     
     # Storage
     STORAGE_TYPE: str = os.getenv("STORAGE_TYPE", "local")
     STORAGE_LOCAL_PATH: str = os.getenv("STORAGE_LOCAL_PATH", "./storage")
+    S3_BUCKET: str = os.getenv("S3_BUCKET", "")
+    S3_ENDPOINT: str = os.getenv("S3_ENDPOINT", "")
+    S3_ACCESS_KEY: str = os.getenv("S3_ACCESS_KEY", "")
+    S3_SECRET_KEY: str = os.getenv("S3_SECRET_KEY", "")
+    
+    # Payment
+    PAYMENT_MOCK: bool = os.getenv("PAYMENT_MOCK", "true").lower() == "true"
+    PAYMENT_CALLBACK_URL: str = os.getenv("PAYMENT_CALLBACK_URL", "")
+    
+    # Monitoring
+    PROMETHEUS_PORT: int = int(os.getenv("PROMETHEUS_PORT", "9090"))
+    
+    # Auto Update
+    AUTO_UPDATE_ENABLED: bool = os.getenv("AUTO_UPDATE_ENABLED", "false").lower() == "true"
+    UPDATE_CHECK_INTERVAL_HOURS: int = int(os.getenv("UPDATE_CHECK_INTERVAL_HOURS", "24"))
+    GIT_REPO_URL: str = os.getenv("GIT_REPO_URL", "")
+    
+    # Backup
+    BACKUP_CRON_SCHEDULE: str = os.getenv("BACKUP_CRON_SCHEDULE", "0 2 * * *")
+    BACKUP_RETENTION_DAYS: int = int(os.getenv("BACKUP_RETENTION_DAYS", "7"))
     
     # Feature Flags
     FEATURE_MUSIC_ENABLED: bool = os.getenv("FEATURE_MUSIC_ENABLED", "true").lower() == "true"
     FEATURE_VPN_ENABLED: bool = os.getenv("FEATURE_VPN_ENABLED", "true").lower() == "true"
     FEATURE_WALLET_ENABLED: bool = os.getenv("FEATURE_WALLET_ENABLED", "true").lower() == "true"
     FEATURE_TICKET_ENABLED: bool = os.getenv("FEATURE_TICKET_ENABLED", "true").lower() == "true"
-    FEATURE_PLUGINS_ENABLED: bool = False
-    
-    # Payment, backup, update (minimal)
-    PAYMENT_MOCK: bool = True
-    AUTO_UPDATE_ENABLED: bool = False
-    BACKUP_CRON_SCHEDULE: str = "0 2 * * *"
-    BACKUP_RETENTION_DAYS: int = 7
+    FEATURE_PLUGINS_ENABLED: bool = os.getenv("FEATURE_PLUGINS_ENABLED", "false").lower() == "true"  # پیش‌فرض false
 
 settings = Settings()
